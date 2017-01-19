@@ -17,7 +17,7 @@ fn send_shared_oneshot_and_wait_on_multiple_threads(threads_number: u32) {
             assert!(*cloned_future.wait().unwrap() == 6);
         })
     }).collect::<Vec<_>>();
-    tx.complete(6);
+    tx.send(6).unwrap();
     assert!(*f.wait().unwrap() == 6);
     for f in threads {
         f.join().unwrap();
@@ -55,13 +55,13 @@ fn drop_on_one_task_ok() {
     let (tx3, rx3) = oneshot::channel::<u32>();
 
     let t2 = thread::spawn(|| {
-        drop(f2.map(|x| tx3.complete(*x)).map_err(|_| ()).wait());
+        drop(f2.map(|x| tx3.send(*x).unwrap()).map_err(|_| ()).wait());
     });
 
-    tx2.complete(11); // cancel `f1`
+    tx2.send(11).unwrap(); // cancel `f1`
     t1.join().unwrap();
 
-    tx.complete(42); // Should cause `f2` and then `rx3` to get resolved.
+    tx.send(42).unwrap(); // Should cause `f2` and then `rx3` to get resolved.
     let result = rx3.wait().unwrap();
     assert_eq!(result, 42);
     t2.join().unwrap();
